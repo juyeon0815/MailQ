@@ -1,0 +1,6 @@
+botbuilder-core
+aiohttp
+openai
+requests
+python-dotenv
+apscheduler

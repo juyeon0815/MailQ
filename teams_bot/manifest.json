@@ -1,0 +1,47 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "packageName": "com.example.outlookbot",
+  "developer": {
+    "name": "Your Name",
+    "websiteUrl": "https://ea2b-211-219-124-154.ngrok-free.app",
+    "privacyUrl": "https://ea2b-211-219-124-154.ngrok-free.app/privacy",
+    "termsOfUseUrl": "https://ea2b-211-219-124-154.ngrok-free.app/terms"
+  },
+  "name": {
+    "short": "메일 요약봇",
+    "full": "Outlook 메일 요약 및 일정 관리 봇"
+  },
+  "description": {
+    "short": "메일 요약 + 일정 관리 봇",
+    "full": "Outlook과 Teams에서 작동하는 메일 요약 및 일정 관리 봇입니다."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#6264A7",
+  "bots": [
+    {
+      "botId": "ef49f037-efa3-4680-a649-c78e26c6c673",
+      "scopes": [
+        "personal",
+        "team",
+        "groupchat"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "supportsCalling": false,
+      "supportsVideo": false
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "4e11-211-219-124-154.ngrok-free.app"
+  ]
+}
