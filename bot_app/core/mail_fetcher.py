@@ -2,27 +2,25 @@ import requests
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from .graph_client import get_graph_token
-from .blob_uploader import save_email_to_blob
+from util.graph_helper import get_user_principal_name
+# from .blob_uploader import save_email_to_blob
 
 load_dotenv()
 
 GRAPH_API_ENDPOINT = "https://graph.microsoft.com/v1.0"
 
-def get_user_email(access_token: str) -> str:
-    headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get(f"{GRAPH_API_ENDPOINT}/me", headers=headers)
-    response.raise_for_status()
-    return response.json().get("userPrincipalName")  # 또는 "mail"
 
 def fetch_today_mails(access_token: str) -> list[dict]:
     
-    user_email = get_user_email(access_token)
+    user_email = get_user_principal_name(access_token)
+    
+    print(f"📧 Fetching today's mails for user: {user_email}")
 
     today = datetime.utcnow().date()
     today_start = f"{today}T00:00:00Z"
 
-    url = f"{GRAPH_API_ENDPOINT}/users/{user_email}/mailFolders/inbox/messages"
+    # url = f"{GRAPH_API_ENDPOINT}/users/{user_email}/mailFolders/inbox/messages"
+    url = f"{GRAPH_API_ENDPOINT}/me/mailFolders/inbox/messages"
     params = {
         "$filter": f"receivedDateTime ge {today_start}",
         "$select": "id,subject,bodyPreview,receivedDateTime,from,body",
@@ -42,47 +40,47 @@ def fetch_today_mails(access_token: str) -> list[dict]:
 
     print(mails)
 
-    for mail in mails:
-        save_email_to_blob(user_email, mail)
+    # for mail in mails:
+    #     save_email_to_blob(user_email, mail)
 
     return mails
 
-def fetch_all_mails(access_token: str, folders: list[str] = ["inbox", "archive"]) -> list:
+# def fetch_all_mails(access_token: str, folders: list[str] = ["inbox", "archive"]) -> list:
     
-    user_email = get_user_email(access_token)
+#     user_email = get_user_email(access_token)
 
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Prefer": 'outlook.body-content-type="text"'
-    }
+#     headers = {
+#         "Authorization": f"Bearer {access_token}",
+#         "Prefer": 'outlook.body-content-type="text"'
+#     }
     
-    mails = []
+#     mails = []
 
-    for folder in folders:
-        print(f"📦 Fetching from folder: {folder}")
+#     for folder in folders:
+#         print(f"📦 Fetching from folder: {folder}")
         
-        url = f"{GRAPH_API_ENDPOINT}/users/{user_email}/mailFolders/{folder}/messages"
+#         url = f"{GRAPH_API_ENDPOINT}/users/{user_email}/mailFolders/{folder}/messages"
         
-        params = {
-            "$select": "id,subject,bodyPreview,receivedDateTime,from,body",
-            "$orderby": "receivedDateTime desc",
-            "$top": 50
-        }
+#         params = {
+#             "$select": "id,subject,bodyPreview,receivedDateTime,from,body",
+#             "$orderby": "receivedDateTime desc",
+#             "$top": 50
+#         }
 
-        while url:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+#         while url:
+#             response = requests.get(url, headers=headers, params=params)
+#             response.raise_for_status()
+#             data = response.json()
 
-            mails = data.get("value", [])
-            mails.extend(mails)
+#             mails = data.get("value", [])
+#             mails.extend(mails)
 
-            for mail in mails:
-                save_email_to_blob(user_email, mail)
+#             for mail in mails:
+#                 save_email_to_blob(user_email, mail)
 
-            url = data.get("@odata.nextLink")  # 페이징 처리
+#             url = data.get("@odata.nextLink")  # 페이징 처리
 
-    return mails
+#     return mails
 
 # def get_all_mail_folders():
 #     token = get_graph_token()

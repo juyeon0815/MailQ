@@ -3,6 +3,9 @@ import os
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
 import requests
+import jwt  # PyJWT
+from jwt import DecodeError
+from botbuilder.core import TurnContext
 
 load_dotenv()
 
@@ -23,6 +26,25 @@ def get_graph_token():
     if "access_token" not in result:
         raise Exception(f"[Graph Auth Error] {result.get('error_description')}")
     return result["access_token"]
+
+def extract_access_token_from_context(turn_context: TurnContext) -> str:
+    """
+    Teams 채널 데이터에서 Outlook Graph API용 access_token 추출
+    """
+    try:
+        return turn_context.activity.channel_data["tenant"]["token"]
+    except KeyError:
+        raise ValueError("Access token not found in channel_data")
+
+# def get_user_email_from_token(access_token: str) -> str:
+#     """
+#     access_token 내부 디코딩하여 사용자의 이메일(upn) 추출
+#     """
+#     try:
+#         decoded = jwt.decode(access_token, options={"verify_signature": False})
+#         return decoded.get("upn") or decoded.get("preferred_username")
+#     except DecodeError:
+#         raise ValueError("Invalid access token")
 
 
 def get_user_principal_name(token: str) -> str:
