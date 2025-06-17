@@ -1,7 +1,7 @@
 # mail_sync_manager.py
 
 from .mail_fetcher import fetch_all_mails, fetch_today_mails, get_user_email
-from .blob_uploader import check_user_exists
+from .mail_uploader import check_user_exists
 
 def sync_user_mail(access_token: str):
     user_email = get_user_email(access_token)

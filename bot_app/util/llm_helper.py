@@ -1,18 +1,21 @@
 from openai import AzureOpenAI
 import os
 import dotenv
+import requests
 
 # Load environment variables from .env file
-dotenv.load_dotenv()    
+dotenv.load_dotenv() 
 
-api_key = os.getenv("OPENAI_API_KEY")
-api_version = os.getenv("OPENAI_API_VERSION")
-api_endpoint = os.getenv("OPENAI_API_ENDPOINT")
-model = os.getenv("OPENAI_MODEL")
+async def generate_response(prompt: str, content: str) -> str:
 
+    api_key = os.getenv("OPENAI_API_KEY")
+    api_version = os.getenv("OPENAI_API_VERSION")
+    api_endpoint = os.getenv("OPENAI_API_ENDPOINT")
+    model = os.getenv("OPENAI_MODEL")
 
-
-def generate_response(prompt: str, content: str) -> str:
+    # prompt가 비어있으면 기본 메시지로 설정
+    if not prompt:
+        prompt = "You are a helpful assistant."
 
     client = AzureOpenAI(
         api_key=api_key,
@@ -26,6 +29,9 @@ def generate_response(prompt: str, content: str) -> str:
             {"role": "system", "content": prompt},
             {"role": "user", "content": content}
         ],
-        temperature=0.7,
+        temperature=0.3,
     )
+
+    print(response.choices[0].message.content)
+
     return response.choices[0].message.content.strip()

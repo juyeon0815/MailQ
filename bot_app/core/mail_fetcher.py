@@ -3,14 +3,15 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 from util.graph_helper import get_user_principal_name
-# from .blob_uploader import save_email_to_blob
+from core.mail_uploader import save_mails_to_blob, save_mails_to_embed_and_store
+from core.mail_uploader import set_mail_status
 
 load_dotenv()
 
 GRAPH_API_ENDPOINT = "https://graph.microsoft.com/v1.0"
 
 
-def fetch_today_mails(access_token: str) -> list[dict]:
+async def fetch_today_mails(access_token: str) -> str:
     
     user_email = get_user_principal_name(access_token)
     
@@ -38,84 +39,63 @@ def fetch_today_mails(access_token: str) -> list[dict]:
 
     mails = response.json().get("value", [])
 
-    print(mails)
-
-    # for mail in mails:
-    #     save_email_to_blob(user_email, mail)
+    print(f"📬 Fetched {len(mails)} mails for today.")
 
     return mails
 
-# def fetch_all_mails(access_token: str, folders: list[str] = ["inbox", "archive"]) -> list:
+# 전체 메일을 가져오는 함수 (보관함 / 아카이브)
+async def fetch_all_mails(access_token: str, folders: list[str] = ["inbox", "archive"]) :
     
-#     user_email = get_user_email(access_token)
+    user_email = get_user_principal_name(access_token)
 
-#     headers = {
-#         "Authorization": f"Bearer {access_token}",
-#         "Prefer": 'outlook.body-content-type="text"'
-#     }
+    try :
+        set_mail_status(user_email, "pending")
+        print(f"📧 Fetching all mails for user: {user_email}")
+
+        headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Prefer": 'outlook.body-content-type="text"'
+        }
+        
+        BATCH_SIZE = 50  # 한 번에 가져올 메일 수
+
+        for folder in folders:
+            print(f"📦 Fetching from folder: {folder}")
+            
+            url = f"{GRAPH_API_ENDPOINT}/users/{user_email}/mailFolders/{folder}/messages"
+            params = {
+                "$select": "id,subject,bodyPreview,receivedDateTime,from,body",
+                "$orderby": "receivedDateTime desc",
+                "$top": BATCH_SIZE
+            }
+
+            while url:
+
+                response = requests.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                batch_mails = data.get("value", [])
+
+                print(f"📦 batch_mails 타입: {type(batch_mails)}")  # 확인용
+                
+                # # 50개씩 묶어서 저장
+                if batch_mails:
+                    save_mails_to_blob(user_email, batch_mails)
+                    save_mails_to_embed_and_store(user_email, batch_mails)
+
+                url = data.get("@odata.nextLink")  # 다음 페이지 URL
+                params = None
+            
+            print(f"📦 Finished fetching from folder: {folder}")
+            set_mail_status(user_email, "done")
+
+    except Exception as e:
+        set_mail_status(user_email, "error")
+        print(f"❌ {user_email} 수집 실패: {e}")
     
-#     mails = []
+    
 
-#     for folder in folders:
-#         print(f"📦 Fetching from folder: {folder}")
-        
-#         url = f"{GRAPH_API_ENDPOINT}/users/{user_email}/mailFolders/{folder}/messages"
-        
-#         params = {
-#             "$select": "id,subject,bodyPreview,receivedDateTime,from,body",
-#             "$orderby": "receivedDateTime desc",
-#             "$top": 50
-#         }
+    
 
-#         while url:
-#             response = requests.get(url, headers=headers, params=params)
-#             response.raise_for_status()
-#             data = response.json()
-
-#             mails = data.get("value", [])
-#             mails.extend(mails)
-
-#             for mail in mails:
-#                 save_email_to_blob(user_email, mail)
-
-#             url = data.get("@odata.nextLink")  # 페이징 처리
-
-#     return mails
-
-# def get_all_mail_folders():
-#     token = get_graph_token()
-#     headers = {"Authorization": f"Bearer {token}"}
-#     url = f"{GRAPH_API_ENDPOINT}/users/{USER_ID}/mailFolders"
-#     response = requests.get(url, headers=headers)
-#     response.raise_for_status()
-#     folders = response.json().get("value", [])
-#     return folders
-
-
-# def fetch_mails_from_folder(folder_id, start_datetime: str = None, end_datetime: str = None):
-#     token = get_graph_token()
-#     headers = {"Authorization": f"Bearer {token}"}
-
-#     url = f"{GRAPH_API_ENDPOINT}/users/{USER_ID}/mailFolders/{folder_id}/messages"
-#     params = {
-#         "$select": "id,subject,bodyPreview,receivedDateTime,from,body",
-#         "$orderby": "receivedDateTime desc",
-#         "$top": 50
-#     }
-
-#     if start_datetime:
-#         filter_str = f"receivedDateTime ge {start_datetime}"
-#         if end_datetime:
-#             filter_str += f" and receivedDateTime lt {end_datetime}"
-#         params["$filter"] = filter_str
-
-#     all_mails = []
-#     while url:
-#         response = requests.get(url, headers=headers, params=params)
-#         response.raise_for_status()
-#         data = response.json()
-#         all_mails.extend(data.get("value", []))
-#         url = data.get("@odata.nextLink", None)
-#         params = None
-
-#     return all_mails
+    

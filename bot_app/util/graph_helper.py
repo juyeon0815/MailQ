@@ -47,7 +47,7 @@ def extract_access_token_from_context(turn_context: TurnContext) -> str:
 #         raise ValueError("Invalid access token")
 
 
-def get_user_principal_name(token: str) -> str:
+async def get_user_principal_name(token: str) -> str:
     """
     Access Token을 이용해 사용자 ID(email)를 가져옵니다.
     """
