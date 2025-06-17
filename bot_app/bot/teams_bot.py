@@ -1,5 +1,6 @@
 from botbuilder.core import ActivityHandler, TurnContext, MessageFactory, CardFactory
 from botbuilder.schema import CardAction, ActionTypes, HeroCard, Attachment
+from botframework.connector.auth import MicrosoftAppCredentials
 from util.llm_helper import generate_response
 import os
 from dotenv import load_dotenv
@@ -13,32 +14,37 @@ load_dotenv()
 class TeamsMailBot(ActivityHandler):
     async def on_members_added_activity(self, members_added, turn_context: TurnContext):
         for member in members_added:
+
             if member.id != turn_context.activity.recipient.id:
 
-                access_token = os.getenv("ACCESS_TOKEN")
-                print(access_token)
-                status = get_mail_status("juyeon@dev0815.onmicrosoft.com")
+                await turn_context.send_activity(
+                    MessageFactory.attachment(self._create_suggested_action_card())
+                )
 
-                if status == "pending":
-                    await turn_context.send_activity("⏳ 메일을 수집 중입니다. 잠시만 기다려주세요.")
-                    return
+                # access_token = os.getenv("ACCESS_TOKEN")
+                # print(access_token)
+                # status = get_mail_status("juyeon@dev0815.onmicrosoft.com")
+
+                # if status == "pending":
+                #     await turn_context.send_activity("⏳ 메일을 수집 중입니다. 잠시만 기다려주세요.")
+                #     return
                 
-                elif status == "done":
-                    await turn_context.send_activity("📬 수집이 완료되어 Agent를 시작합니다.")
+                # elif status == "done":
+                #     await turn_context.send_activity("📬 수집이 완료되어 Agent를 시작합니다.")
                     
-                    await turn_context.send_activity(
-                    MessageFactory.attachment(self._create_suggested_action_card())
-                    )
+                #     await turn_context.send_activity(
+                #     MessageFactory.attachment(self._create_suggested_action_card())
+                #     )
                     
-                else:
-                    await turn_context.send_activity("📦 메일을 수집하고 있어요. 잠시만 기다려주세요.")
-                    asyncio.create_task(fetch_all_mails(access_token))
+                # else:
+                #     await turn_context.send_activity("📦 메일을 수집하고 있어요. 잠시만 기다려주세요.")
+                #     asyncio.create_task(fetch_all_mails(access_token))
                     
-                    await turn_context.send_activity("✅ 메일 수집이 완료되었습니다.")
+                #     await turn_context.send_activity("✅ 메일 수집이 완료되었습니다.")
                     
-                    await turn_context.send_activity(
-                    MessageFactory.attachment(self._create_suggested_action_card())
-                    )
+                #     await turn_context.send_activity(
+                #     MessageFactory.attachment(self._create_suggested_action_card())
+                #     )
                 
                 
     def _create_suggested_action_card(self) -> Attachment:
@@ -54,7 +60,37 @@ class TeamsMailBot(ActivityHandler):
     
     async def on_message_activity(self, turn_context: TurnContext):
         
-        print("🔔 [on_message_activity] 메세지 수신됨.")
+        connection_name = "TeamsSSO2"
+        adapter = turn_context.adapter
+
+        app_id = os.getenv("MICROSOFT_APP_ID")
+        app_password = os.getenv("MICROSOFT_APP_PASSWORD")
+        credentials = MicrosoftAppCredentials(app_id, app_password)
+
+        # 🔑 access_token 요청
+        token_response = await adapter.get_user_token(
+            turn_context,
+            connection_name=connection_name
+        )
+
+        if token_response and token_response.token:
+            await turn_context.send_activity("✅ 로그인 성공! 토큰 확보했습니다.")
+            print("🔑 Token:", token_response.token)
+        else:
+            sign_in_resource = await adapter.get_sign_in_resource(
+            connection_name="TeamsSSO",
+            turn_context=turn_context
+        )
+
+        if sign_in_resource is None or not getattr(sign_in_resource, "sign_in_link", None):
+            await turn_context.send_activity("🚨 로그인 링크를 생성할 수 없습니다.")
+            print("❌ sign_in_resource is None 또는 링크 없음")
+        else:
+            await turn_context.send_activity(
+                f"🔐 로그인 후 다시 시도해주세요: [여기 클릭]({sign_in_resource.sign_in_link})"
+            )
+            print("✅ 로그인 링크 생성됨:", sign_in_resource.sign_in_link)
+
         
         try:
             
@@ -64,25 +100,26 @@ class TeamsMailBot(ActivityHandler):
             if "요약" in user_input:
 
                 await turn_context.send_activity("📬 오늘 받은 메일을 요약해드릴게요.")
-                await handle_summary_request(turn_context)
+                # await handle_summary_request(turn_context)
 
                 # await turn_context.send_activity("📬 오늘 받은 메일을 요약해드릴게요.")
                 # await handle_summary_request(turn_context)
 
             elif "검색" in user_input:
-                print("User requested search.")
+                # print("User requested search.")
+                await turn_context.send_activity("📬 오늘 받은 메일을 요약해드릴게요2.")
                 # await turn_context.send_activity("검색할 메일 키워드를 입력해주세요.")
 
             else:
-                print("LLM 응답 생성 중...")
-                response = await generate_response("",user_input)
-                print(f"LLM 응답: {response}")
-                await turn_context.send_activity(response)
-                # await turn_context.send_activity("죄송해요, 이해하지 못했어요. '요약' 또는 '검색'을 입력해보세요.")
+                # print("LLM 응답 생성 중...")
+                # response = await generate_response("",user_input)
+                # print(f"LLM 응답: {response}")
+                # await turn_context.send_activity(response)
+                await turn_context.send_activity("죄송해요, 이해하지 못했어요. '요약' 또는 '검색'을 입력해보세요.")
 
         except Exception as e:
             print("🔥 [on_message_activity] 오류 발생:", e)
-            # await turn_context.send_activity("❌ 내부 오류가 발생했습니다.")
+            await turn_context.send_activity("❌ 내부 오류가 발생했습니다.")
 
 
     # async def on_message_activity(self, turn_context: TurnContext):

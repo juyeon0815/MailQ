@@ -6,9 +6,9 @@
   "packageName": "com.example.outlookbot",
   "developer": {
     "name": "Your Name",
-    "websiteUrl": "https://ea2b-211-219-124-154.ngrok-free.app",
-    "privacyUrl": "https://ea2b-211-219-124-154.ngrok-free.app/privacy",
-    "termsOfUseUrl": "https://ea2b-211-219-124-154.ngrok-free.app/terms"
+    "websiteUrl": "https://9cbe-211-219-124-154.ngrok-free.app",
+    "privacyUrl": "https://9cbe-211-219-124-154.ngrok-free.app/privacy",
+    "termsOfUseUrl": "https://9cbe-211-219-124-154.ngrok-free.app/terms"
   },
   "name": {
     "short": "메일 요약봇",
@@ -23,9 +23,13 @@
     "outline": "outline.png"
   },
   "accentColor": "#6264A7",
+  "webApplicationInfo": {
+        "id": "9bbbaa7a-33fa-44ef-b02d-af5f15f51294",   
+        "resource": "api://botid-9bbbaa7a-33fa-44ef-b02d-af5f15f51294"
+  },  
   "bots": [
     {
-      "botId": "ef49f037-efa3-4680-a649-c78e26c6c673",
+      "botId": "9bbbaa7a-33fa-44ef-b02d-af5f15f51294",
       "scopes": [
         "personal",
         "team",
@@ -42,6 +46,7 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "4e11-211-219-124-154.ngrok-free.app"
+    "9cbe-211-219-124-154.ngrok-free.app",
+    "token.botframework.com"
   ]
 }
