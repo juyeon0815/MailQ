@@ -38,10 +38,10 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "b9dc-222-99-74-78.ngrok-free.app"
+    "3894-211-219-124-154.ngrok-free.app"
   ],
   "webApplicationInfo": {
     "id": "2e0cc655-e8b0-4d9a-9004-71e6c0a958f8",
-    "resource": "api://2e0cc655-e8b0-4d9a-9004-71e6c0a958f8"
+    "resource": "https://graph.microsoft.com"
   }
 }
