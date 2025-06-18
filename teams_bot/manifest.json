@@ -1,44 +1,36 @@
 {
-  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
-  "manifestVersion": "1.16",
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.13/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.13",
   "version": "1.0.0",
-  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "packageName": "com.example.outlookbot",
-  "developer": {
-    "name": "Your Name",
-    "websiteUrl": "https://9cbe-211-219-124-154.ngrok-free.app",
-    "privacyUrl": "https://9cbe-211-219-124-154.ngrok-free.app/privacy",
-    "termsOfUseUrl": "https://9cbe-211-219-124-154.ngrok-free.app/terms"
-  },
+  "id": "2e0cc655-e8b0-4d9a-9004-71e6c0a958f8",
+  "packageName": "com.example.teams.ssobot",
   "name": {
-    "short": "메일 요약봇",
-    "full": "Outlook 메일 요약 및 일정 관리 봇"
+    "short": "SSO Bot",
+    "full": "Teams SSO Bot Example"
   },
   "description": {
-    "short": "메일 요약 + 일정 관리 봇",
-    "full": "Outlook과 Teams에서 작동하는 메일 요약 및 일정 관리 봇입니다."
+    "short": "Teams bot with SSO",
+    "full": "This Teams bot uses Azure AD SSO via OAuthCard."
+  },
+  "developer": {
+    "name": "Your Name",
+    "websiteUrl": "https://yourdomain.com",
+    "privacyUrl": "https://yourdomain.com/privacy",
+    "termsOfUseUrl": "https://yourdomain.com/terms"
   },
   "icons": {
     "color": "color.png",
     "outline": "outline.png"
   },
-  "accentColor": "#6264A7",
-  "webApplicationInfo": {
-        "id": "9bbbaa7a-33fa-44ef-b02d-af5f15f51294",   
-        "resource": "api://botid-9bbbaa7a-33fa-44ef-b02d-af5f15f51294"
-  },  
+  "accentColor": "#60A18E",
   "bots": [
     {
-      "botId": "9bbbaa7a-33fa-44ef-b02d-af5f15f51294",
+      "botId": "2e0cc655-e8b0-4d9a-9004-71e6c0a958f8",
       "scopes": [
-        "personal",
-        "team",
-        "groupchat"
+        "personal"
       ],
       "supportsFiles": false,
-      "isNotificationOnly": false,
-      "supportsCalling": false,
-      "supportsVideo": false
+      "isNotificationOnly": false
     }
   ],
   "permissions": [
@@ -46,7 +38,10 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "9cbe-211-219-124-154.ngrok-free.app",
-    "token.botframework.com"
-  ]
+    "b9dc-222-99-74-78.ngrok-free.app"
+  ],
+  "webApplicationInfo": {
+    "id": "2e0cc655-e8b0-4d9a-9004-71e6c0a958f8",
+    "resource": "api://2e0cc655-e8b0-4d9a-9004-71e6c0a958f8"
+  }
 }

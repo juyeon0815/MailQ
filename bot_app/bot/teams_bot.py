@@ -1,17 +1,11 @@
-from botbuilder.core import ActivityHandler, TurnContext, MessageFactory, CardFactory
-from botbuilder.schema import CardAction, ActionTypes, HeroCard, Attachment
-from botframework.connector.auth import MicrosoftAppCredentials
-from util.llm_helper import generate_response
-import os
-from dotenv import load_dotenv
+from botbuilder.schema import OAuthCard,HeroCard, CardAction, Attachment, ActivityTypes, Activity, ActionTypes
+from botbuilder.core import MessageFactory, TurnContext, CardFactory
+from botbuilder.core.teams import TeamsActivityHandler
+from botbuilder.core.teams import TeamsInfo
 from handler.summary_handler import handle_summary_request
-from core.mail_uploader import check_user_exists, get_mail_status
-from core.mail_fetcher import fetch_today_mails, fetch_all_mails
-import asyncio
 
-load_dotenv()
+class TeamsMailBot(TeamsActivityHandler):
 
-class TeamsMailBot(ActivityHandler):
     async def on_members_added_activity(self, members_added, turn_context: TurnContext):
         for member in members_added:
 
@@ -21,32 +15,6 @@ class TeamsMailBot(ActivityHandler):
                     MessageFactory.attachment(self._create_suggested_action_card())
                 )
 
-                # access_token = os.getenv("ACCESS_TOKEN")
-                # print(access_token)
-                # status = get_mail_status("juyeon@dev0815.onmicrosoft.com")
-
-                # if status == "pending":
-                #     await turn_context.send_activity("⏳ 메일을 수집 중입니다. 잠시만 기다려주세요.")
-                #     return
-                
-                # elif status == "done":
-                #     await turn_context.send_activity("📬 수집이 완료되어 Agent를 시작합니다.")
-                    
-                #     await turn_context.send_activity(
-                #     MessageFactory.attachment(self._create_suggested_action_card())
-                #     )
-                    
-                # else:
-                #     await turn_context.send_activity("📦 메일을 수집하고 있어요. 잠시만 기다려주세요.")
-                #     asyncio.create_task(fetch_all_mails(access_token))
-                    
-                #     await turn_context.send_activity("✅ 메일 수집이 완료되었습니다.")
-                    
-                #     await turn_context.send_activity(
-                #     MessageFactory.attachment(self._create_suggested_action_card())
-                #     )
-                
-                
     def _create_suggested_action_card(self) -> Attachment:
         card = HeroCard(
             title="Mail Assistant",
@@ -57,111 +25,77 @@ class TeamsMailBot(ActivityHandler):
             ],
         )
         return CardFactory.hero_card(card)
-    
-    async def on_message_activity(self, turn_context: TurnContext):
         
-        connection_name = "TeamsSSO2"
+
+    
+
+    async def on_message_activity(self, turn_context: TurnContext):
         adapter = turn_context.adapter
 
-        app_id = os.getenv("MICROSOFT_APP_ID")
-        app_password = os.getenv("MICROSOFT_APP_PASSWORD")
-        credentials = MicrosoftAppCredentials(app_id, app_password)
-
-        # 🔑 access_token 요청
-        token_response = await adapter.get_user_token(
-            turn_context,
-            connection_name=connection_name
-        )
+        token_response = await adapter.get_user_token(turn_context, connection_name="SSO")
 
         if token_response and token_response.token:
-            await turn_context.send_activity("✅ 로그인 성공! 토큰 확보했습니다.")
-            print("🔑 Token:", token_response.token)
+            access_token = token_response.token
+            await turn_context.send_activity("✅ 로그인 성공! access_token 발급 완료")
+            # 👉 여기서 access_token 사용해 Graph API 호출 가능
         else:
-            sign_in_resource = await adapter.get_sign_in_resource(
-            connection_name="TeamsSSO",
-            turn_context=turn_context
-        )
+            # ❗ access_token이 없으면 로그인 카드 전송
+            await self._send_login_card(turn_context)
 
-        if sign_in_resource is None or not getattr(sign_in_resource, "sign_in_link", None):
-            await turn_context.send_activity("🚨 로그인 링크를 생성할 수 없습니다.")
-            print("❌ sign_in_resource is None 또는 링크 없음")
-        else:
-            await turn_context.send_activity(
-                f"🔐 로그인 후 다시 시도해주세요: [여기 클릭]({sign_in_resource.sign_in_link})"
-            )
-            print("✅ 로그인 링크 생성됨:", sign_in_resource.sign_in_link)
-
-        
+        # 사용자가 메시지 입력할 때 마다 멤버 조회 필수
         try:
+            # Teams 컨텍스트에서 멤버 정보 가져오기
+            member = await TeamsInfo.get_member(
+                turn_context, 
+                turn_context.activity.from_property.id
+            )
+
+            if not member:
+                await turn_context.send_activity("🚨 해당 봇을 사용할 수 없는 사용자 입니다. 관리자에게 문의해주세요.")
+                return
             
+            user_email = getattr(member, 'email', None)
+            print(f"User Email: {user_email}")  # 디버깅용 출력
+
+            # 사용자 input에 따라 분기처리 
             user_input = turn_context.activity.text.strip().lower()
-            print(f"Received user input: {user_input}")
 
             if "요약" in user_input:
-
+                # 요약 요청 처리
                 await turn_context.send_activity("📬 오늘 받은 메일을 요약해드릴게요.")
-                # await handle_summary_request(turn_context)
+                
+                await handle_summary_request(turn_context)
 
-                # await turn_context.send_activity("📬 오늘 받은 메일을 요약해드릴게요.")
-                # await handle_summary_request(turn_context)
 
-            elif "검색" in user_input:
-                # print("User requested search.")
-                await turn_context.send_activity("📬 오늘 받은 메일을 요약해드릴게요2.")
-                # await turn_context.send_activity("검색할 메일 키워드를 입력해주세요.")
-
-            else:
-                # print("LLM 응답 생성 중...")
-                # response = await generate_response("",user_input)
-                # print(f"LLM 응답: {response}")
-                # await turn_context.send_activity(response)
-                await turn_context.send_activity("죄송해요, 이해하지 못했어요. '요약' 또는 '검색'을 입력해보세요.")
-
+            elif "검색" in user_input:  
+                # 검색 요청 처리
+                await turn_context.send_activity("🔍 메일을 검색해드릴게요. 검색어를 입력해주세요.")
+                
+                
         except Exception as e:
-            print("🔥 [on_message_activity] 오류 발생:", e)
-            await turn_context.send_activity("❌ 내부 오류가 발생했습니다.")
+            await turn_context.send_activity("🚨 해당 봇을 사용할 수 없는 사용자 입니다. 관리자에게 문의해주세요.")
 
+    async def _send_login_card(self, turn_context: TurnContext):
+        oauth_card = OAuthCard(
+            text="Outlook에 로그인해주세요",
+            connection_name="teams-oauth",  # SSO 연결 이름
+            buttons=[
+                CardAction(
+                    type=ActionTypes.signin,
+                    title="로그인",
+                    value=""
+                )
+            ]
+        )
 
-    # async def on_message_activity(self, turn_context: TurnContext):
-    #     user_input = turn_context.activity.text.strip().lower()
+        attachment = Attachment(
+            content_type="application/vnd.microsoft.card.oauth",  # ✅ 여기!
+            content=oauth_card
+        )
 
-    #     print(f"Received user input: {user_input}")
+        activity = Activity(
+            type=ActivityTypes.message,
+            attachments=[attachment]
+        )
 
-    #     if "요약" in user_input:
-
-    #         print("User requested summary.")
-
-    #         await turn_context.send_activity("📬 오늘 받은 메일을 요약해드릴게요.")
-            
-    #         await handle_summary_request(turn_context)
-    #         # try :
-    #         #     # 사용자 ID를 가져옵니다.
-    #         #     accss_token = os.getenv("ACCESS_TOKEN")
-
-    #         #     user_id = get_user_principal_name(accss_token)  # 사용자 ID를 가져오는 함수 호출
-    #         #     print(f"사용자 ID: {user_id}")
-
-    #         #     # DB에 사용자 정보가 없다면 메일 일어오고, 보관함 + 아카이브 메일 백업 필요
-
-    #         #     # 사용자 메일을 가져옵니다.
-    #         #     mails = get_user_mails(user_id)  # 사용자 메일을 가져오는 함수 호출
-
-    #         #     # 👉 여기에 메일 요약 함수 호출 (예: summarize_today_mails(user_id))
-    #         #     await turn_context.send_activity("메일 요약을 처리 중입니다...")
-    #         #     result = summarize_emails(mails)  # 이 부분은 실제 메일 요약 함수로 대체해야 합니다.
-    #         #     await turn_context.send_activity(f"오늘의 메일 요약: {result}")
-    #         #     # 예시: result = summarize_today_mails(user_id)
-    #         #     # await turn_context.send_activity(f"오늘의 메일 요약: {result}")
-            
-    #         # except Exception as e:
-    #         #     await turn_context.send_activity(f"오류가 발생했습니다: {str(e)}")
-
-    #         # 👉 여기에 메일 요약 함수 호출 (예: summarize_today_mails(user_id))
-    #     elif "검색" in user_input:
-    #         print("User requested search.")
-    #         await turn_context.send_activity("검색할 메일 키워드를 입력해주세요.")
-    #         # 검색 기능 구현
-    #         # 만약 DB에 데이터가 없다면 메일함 + 아카이브 백업 필요
-    #     else:
-    #         print("User input not recognized, sending default response.")
-    #         await turn_context.send_activity("죄송해요, 이해하지 못했어요. '요약' 또는 '검색'을 입력해보세요.")
+        await turn_context.send_activity(activity)
