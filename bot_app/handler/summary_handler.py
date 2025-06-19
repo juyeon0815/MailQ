@@ -23,7 +23,7 @@ def handle_summary_request(turn_context, access_token: str):
     # print("🔑 오늘 받은 메일을 요약합니다.")
     summary = summarize_emails(mails)
 
-    print("📬 오늘 받은 메일 리턴", mails)
+    # print("📬 오늘 받은 메일 리턴", mails)
     
     return turn_context.send_activity(summary)
 

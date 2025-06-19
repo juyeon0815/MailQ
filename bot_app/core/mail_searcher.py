@@ -34,7 +34,7 @@ def rewrite_user_query(user_input: str) -> str:
 
 
 # 2️⃣ Azure AI Search 호출
-def search_emails_from_index(search_text: str, top_k: int = 5) -> list[dict]:
+def search_emails_from_index(search_text: str, user_email: str, top_k: int = 5) -> list[dict]:
     """
     Azure AI Search에서 의미 기반 이메일 검색을 수행합니다.
     """
@@ -54,7 +54,8 @@ def search_emails_from_index(search_text: str, top_k: int = 5) -> list[dict]:
         "top": top_k,
         "queryType": "semantic",
         "semanticConfiguration": "default",
-        "queryLanguage": "ko"
+        "queryLanguage": "ko",
+        "filter": f"user_email eq '{user_email}'"
     }
 
     response = requests.post(url, headers=headers, json=body)

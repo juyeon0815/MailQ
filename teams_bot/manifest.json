@@ -3,17 +3,17 @@
   "manifestVersion": "1.13",
   "version": "1.0.0",
   "id": "2e0cc655-e8b0-4d9a-9004-71e6c0a958f8",
-  "packageName": "com.example.teams.ssobot",
+  "packageName": "com.juyeon.mailq",
   "name": {
-    "short": "SSO Bot",
-    "full": "Teams SSO Bot Example"
+    "short": "MailQ",
+    "full": "MailQ - Smart Email Summary & Search"
   },
   "description": {
-    "short": "Teams bot with SSO",
-    "full": "This Teams bot uses Azure AD SSO via OAuthCard."
+    "short": "Summarize and search your Outlook emails with AI.",
+    "full": "MailQ is a smart assistant that summarizes your Outlook emails and helps you find relevant content through natural-language queries — right inside Microsoft Teams."
   },
   "developer": {
-    "name": "Your Name",
+    "name": "juyeon",
     "websiteUrl": "https://yourdomain.com",
     "privacyUrl": "https://yourdomain.com/privacy",
     "termsOfUseUrl": "https://yourdomain.com/terms"
@@ -38,7 +38,7 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "3894-211-219-124-154.ngrok-free.app"
+    "juyeon-web-app-001.azurewebsites.net"
   ],
   "webApplicationInfo": {
     "id": "2e0cc655-e8b0-4d9a-9004-71e6c0a958f8",

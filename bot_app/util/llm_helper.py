@@ -26,6 +26,8 @@ def generate_response(prompt: str, content: str) -> str:
             ⚠️ 단, 입력이 너무 모호하거나 문맥상 판단이 어려운 경우에는 **"other"**이라고만 답하세요.
             
             예시:
+            - "요약" -> summary
+            - "오늘 받은 메일 요약해줘" → summary
             - "오늘 메일 뭐 왔어?" → summary
             - "받은 메일 정리해줘" → summary
             - "cus 연동오류" → search
