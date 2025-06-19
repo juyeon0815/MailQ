@@ -39,7 +39,7 @@
 ## 🔄 사용 흐름
 
 1. **사용자 질문 입력**  
-   Teams에서 `MailQ` 봇에게 질문 (예: "오늘 메일 요약해줘", "cus 오류 관련 메일 찾아줘")
+   Teams에서 `MailQ` 봇에게 질문 (예: "오늘 메일 요약해줘", " ㅇㅇ 오류 관련 메일 찾아줘")
 
 2. **요청 라우팅 및 처리**
    - 요청을 Flask 서버에서 수신
@@ -61,7 +61,7 @@
 ## 📂 디렉토리 구조
 
 ```
-BOT_APP/
+mailQ/
 │
 ├── bot/                        # Teams Bot 엔트리 포인트 및 라우팅
 │   ├── main_bot.py             # 봇 초기화 및 앱 등록
@@ -82,13 +82,42 @@ BOT_APP/
 │   ├── llm_helper.py           # OpenAI LLM 호출 모듈
 │   └── token_helper.py         # 사용자 access_token 저장 및 관리
 │
-├── .deployment                 # Azure Web App 배포 설정 파일
+├── TEAMS_BOT/                  # Teams 앱 등록을 위한 구성 디렉토리
+│   ├── manifest.json           # Teams 앱 정의 JSON
+│   ├── app.zip                 # Teams 업로드용 앱 패키지
+│   ├── color.png               # 앱 아이콘 (컬러용)
+│   └── outline.png             # 앱 아이콘 (단색용)
+│
 ├── .env                        # 환경 변수 (.env 파일로 관리)
 ├── app.py                      # Flask 진입점 및 라우팅
 ├── requirements.txt            # Python 의존성 목록
-├── startup.sh                  # Azure Web App 실행 스크립트
 └── README.md                   # 프로젝트 설명 문서
 ```
+
+---
+
+## 📎 설치 및 실행
+
+1. `.env` 파일에 다음 정보 등록:
+
+```
+CLIENT_ID=...
+CLIENT_SECRET=...
+TENANT_ID=...
+GRAPH_REDIRECT_URI=https://<your-app>/auth/callback
+```
+
+2. Azure Web App에 배포하거나 로컬에서 테스트하려면 `ngrok` 사용:
+
+```bash
+python app.py
+```
+
+3. Microsoft Teams > App Studio를 통해 `MailQ` 앱 등록:
+
+- `TEAMS_BOT/manifest.json` 기반으로 앱 구성
+- 앱 아이콘: `color.png`, `outline.png`
+- 앱 패키지 zip: `app.zip` 생성 후 Teams에 업로드
 
 ---
 
@@ -100,6 +129,8 @@ BOT_APP/
 
 ---
 
-## 📧 문의
+## ⚠️ 주의사항
 
-궁금한 점이나 협업 제안은 [email@example.com](mailto:email@example.com) 으로 연락 주세요.
+- MailQ는 Microsoft Azure Bot Framework와 Outlook 연동 기능을 사용합니다.
+- **회사/학교 계정**(Work or School account)으로 로그인해야 정상 작동합니다.
+- Microsoft Graph API 접근 권한이 **부여된 사용자만** MailQ 앱을 사용할 수 있습니다.
