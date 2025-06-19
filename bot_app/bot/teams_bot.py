@@ -3,15 +3,17 @@ from botbuilder.core import MessageFactory, TurnContext, CardFactory
 from botbuilder.core.teams import TeamsActivityHandler
 from handler.summary_handler import handle_summary_request
 from core.mail_uploader import get_mail_status
-from util.token_helper import get_token, save_conversation_reference
+from util.token_helper import save_conversation_reference
 from dotenv import load_dotenv
 import os
 from core.mail_fetcher import fetch_all_mails
 from util.graph_helper import get_user_principal_name
 from handler.search_handler import handle_search_request
 from util.llm_helper import generate_response
+from util.token_helper import FileTokenStore
     
 load_dotenv()
+token_store = FileTokenStore()
 
 domain = os.getenv("DOMAIN")
 
@@ -42,21 +44,28 @@ class TeamsMailBot(TeamsActivityHandler):
         await turn_context.send_activity(Activity(type=ActivityTypes.typing))
 
         user_id = turn_context.activity.from_property.id
-        access_token = get_token(user_id)
+
+        ref = TurnContext.get_conversation_reference(turn_context.activity)
+        save_conversation_reference(user_id, ref)
         
-        if not access_token:
-            ref = TurnContext.get_conversation_reference(turn_context.activity)
-            save_conversation_reference(user_id, ref)
+        try:
+            access_token = token_store.get_token(user_id)
+            user_email = None
+
+            if access_token:
+                user_email = get_user_principal_name(access_token)
+
+            if not access_token or not user_email:
+                raise ValueError("인증 실패")
+
+        except Exception as e:
 
             login_url = f"{domain}/auth/login?user_id={user_id}"
-            
-            # 사용자가 로그인하지 않은 경우, 로그인 링크 제공
             await turn_context.send_activity(
-                f"🔐 본인 확인을 위해 먼저 로그인 해주세요: [로그인 링크]({login_url})"
+                f"🔐 인증이 필요합니다. 아래 링크를 클릭해 로그인해 주세요:\n[로그인 링크]({login_url})"
             )
             return
 
-        user_email = get_user_principal_name(access_token)
 
         status = get_mail_status(user_email)
         
@@ -103,7 +112,7 @@ class TeamsMailBot(TeamsActivityHandler):
                 # 검색 로직 추가 필요
                 await turn_context.send_activity(Activity(type=ActivityTypes.typing))
 
-                await handle_search_request(turn_context, user_input)
+                await handle_search_request(turn_context, user_email, user_input)
 
             else:
                 await turn_context.send_activity("🤖 메일 요약 또는 검색 요청이 아닌 것 같아요. 어떤 작업을 도와드릴까요?")

@@ -5,12 +5,15 @@ from bot.teams_bot import TeamsMailBot  # ← 여기 경로 확인
 from flask import Flask, request, redirect
 import requests
 import urllib.parse
-from util.token_helper import save_token, get_conversation_reference
+from util.token_helper import get_conversation_reference
 from dotenv import load_dotenv
 import asyncio
 import os
+import time
+from util.token_helper import FileTokenStore
 
 app = Flask(__name__)
+token_store = FileTokenStore()
 loop = asyncio.get_event_loop()
 
 
@@ -31,6 +34,11 @@ adapter_settings = BotFrameworkAdapterSettings(
 
 adapter = BotFrameworkAdapter(adapter_settings)
 bot = TeamsMailBot()
+
+@app.before_request
+def maybe_cleanup_tokens():
+    if time.time() % 300 < 1:
+        token_store.cleanup_expired_tokens()
 
 
 @app.route("/api/messages", methods=["POST"])
@@ -81,12 +89,14 @@ def callback():
         return f"❌ access_token 없음: {token_json}", 400
 
     user_id = request.args.get("state")
-    save_token(user_id, access_token)
+
+    token_store.save_token(user_id, access_token, token_json.get("expires_in", 3600))
+
 
     # ✅ 봇에게 메시지 보내기
     conversation_reference = get_conversation_reference(user_id)
     if not conversation_reference:
-        return "❗ 대화 정보가 없습니다. 봇에게 먼저 메시지를 보내 로그인 링크를 받아야 합니다.", 400
+        return "✅ 로그인 완료! 이제 Teams로 돌아가서 대화를 시작해주세요.", 200
 
     async def send_to_teams():
         async def logic(context: TurnContext):
@@ -102,7 +112,6 @@ def callback():
     loop.run_until_complete(send_to_teams())
     loop.close()
     
-    return "✅ 로그인 완료! 이제 Teams로 돌아가셔도 됩니다.", 200
-
+    return "✅ 로그인 완료! 이제 Teams로 돌아가서 대화를 시작해주세요.", 200
 # if __name__ == "__main__":
 #     app.run(host="0.0.0.0", port=3978)
