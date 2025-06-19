@@ -5,7 +5,7 @@ from bot.teams_bot import TeamsMailBot  # ← 여기 경로 확인
 from flask import Flask, request, redirect
 import requests
 import urllib.parse
-from util.token_helper import save_token, get_token ,save_conversation_reference, get_conversation_reference
+from util.token_helper import save_token, get_conversation_reference
 from dotenv import load_dotenv
 import asyncio
 import os
@@ -68,33 +68,41 @@ def callback():
     }
 
     response = requests.post(token_url, data=data)
-    token_json = response.json()
     
+    # 🔍 응답이 JSON이 아닐 수도 있으므로 try/catch 추가
+    try:
+        token_json = response.json()
+    except Exception:
+        return f"❌ Token 응답을 JSON으로 파싱할 수 없습니다:\n{response.text}", 400
+
+    # ✅ access_token 확인
+    access_token = token_json.get("access_token")
+    if not access_token:
+        return f"❌ access_token 없음: {token_json}", 400
+
     user_id = request.args.get("state")
-    save_token(user_id, token_json["access_token"])
+    save_token(user_id, access_token)
 
     # ✅ 봇에게 메시지 보내기
-    conversation_reference = get_conversation_reference(user_id)  # 저장된 ref
+    conversation_reference = get_conversation_reference(user_id)
     if not conversation_reference:
         return "❗ 대화 정보가 없습니다. 봇에게 먼저 메시지를 보내 로그인 링크를 받아야 합니다.", 400
 
     async def send_to_teams():
         async def logic(context: TurnContext):
-            await context.send_activity("✅ Microsoft 로그인이 완료되었습니다! 이제부터 Teams에서 메일 관련 작업을 도와드릴게요. 요약 요청을 하거나 메일 검색을 해보세요!")
+            await context.send_activity("✅ Microsoft 로그인이 완료되었습니다! 이제부터 Teams에서 메일 관련 작업을 도와드릴게요.")
         await adapter.continue_conversation(
             conversation_reference,
             logic,
             APP_ID
         )
 
-     # ✅ 해결: 새 이벤트 루프 생성 후 실행
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(send_to_teams())
     loop.close()
     
-    return "✅ 로그인 완료! 이제 Teams로 안내 메시지가 발송됩니다."
+    return "✅ 로그인 완료! 이제 Teams로 돌아가셔도 됩니다.", 200
 
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3978)
+# if __name__ == "__main__":
+#     app.run(host="0.0.0.0", port=3978)

@@ -1,9 +1,8 @@
 import requests
-from datetime import datetime
-import os
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from util.graph_helper import get_user_principal_name
-from core.mail_uploader import save_mails_to_blob, save_mails_to_embed_and_store
+from core.mail_uploader import save_mails_to_blob, save_mails_and_index_to_search
 from core.mail_uploader import set_mail_status
 
 load_dotenv()
@@ -11,19 +10,19 @@ load_dotenv()
 GRAPH_API_ENDPOINT = "https://graph.microsoft.com/v1.0"
 
 
-async def fetch_today_mails(access_token: str) -> str:
-    
-    user_email = get_user_principal_name(access_token)
-    
-    print(f"📧 Fetching today's mails for user: {user_email}")
+def fetch_today_mails(access_token: str) -> list[dict]:
+    print("📧 Fetching today's mails for current user (via /me)")
 
-    today = datetime.utcnow().date()
-    today_start = f"{today}T00:00:00Z"
+    # 한국 시간 기준 오늘 0시 → UTC로 변환
+    now_kst = datetime.now(timezone(timedelta(hours=9)))
+    today_kst = datetime(now_kst.year, now_kst.month, now_kst.day, tzinfo=timezone(timedelta(hours=9)))
+    today_start_utc = today_kst.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    print(f"📅 Filtering mails since (UTC): {today_start_utc}")
 
-    # url = f"{GRAPH_API_ENDPOINT}/users/{user_email}/mailFolders/inbox/messages"
     url = f"{GRAPH_API_ENDPOINT}/me/mailFolders/inbox/messages"
     params = {
-        "$filter": f"receivedDateTime ge {today_start}",
+        "$filter": f"receivedDateTime ge {today_start_utc}",
         "$select": "id,subject,bodyPreview,receivedDateTime,from,body",
         "$orderby": "receivedDateTime desc",
         "$top": 50
@@ -34,14 +33,24 @@ async def fetch_today_mails(access_token: str) -> str:
         "Prefer": 'outlook.body-content-type="text"'
     }
 
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
+    all_mails = []
 
-    mails = response.json().get("value", [])
+    while url:
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
 
-    print(f"📬 Fetched {len(mails)} mails for today.")
+        data = response.json()
+        mails = data.get("value", [])
+        all_mails.extend(mails)
 
-    return mails
+        print(f"📬 Fetched {len(mails)} mails from page")
+
+        url = data.get("@odata.nextLink")
+        params = None
+
+    print(f"📬 총 {len(all_mails)}개의 메일 수집 완료")
+
+    return all_mails
 
 # 전체 메일을 가져오는 함수 (보관함 / 아카이브)
 async def fetch_all_mails(access_token: str, folders: list[str] = ["inbox", "archive"]) :
@@ -49,6 +58,7 @@ async def fetch_all_mails(access_token: str, folders: list[str] = ["inbox", "arc
     user_email = get_user_principal_name(access_token)
 
     try :
+        
         set_mail_status(user_email, "pending")
         print(f"📧 Fetching all mails for user: {user_email}")
 
@@ -79,10 +89,10 @@ async def fetch_all_mails(access_token: str, folders: list[str] = ["inbox", "arc
 
                 print(f"📦 batch_mails 타입: {type(batch_mails)}")  # 확인용
                 
-                # # 50개씩 묶어서 저장
+                # 50개씩 묶어서 저장
                 if batch_mails:
                     save_mails_to_blob(user_email, batch_mails)
-                    save_mails_to_embed_and_store(user_email, batch_mails)
+                    save_mails_and_index_to_search(user_email, batch_mails)
 
                 url = data.get("@odata.nextLink")  # 다음 페이지 URL
                 params = None

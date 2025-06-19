@@ -5,9 +5,9 @@ import json
 from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
 from typing import List
-from util.embedding_helper import get_embedding
 import requests
 from datetime import datetime
+import json
 
 load_dotenv()
 
@@ -16,9 +16,8 @@ BLOB_CONTAINER_NAME = os.getenv("BLOB_CONTAINER_NAME")
 
 blob_service = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
 container = blob_service.get_container_client(BLOB_CONTAINER_NAME)
-# container_name = "emails"
 
-SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")  # e.g., https://<search>.search.windows.net
+SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
 SEARCH_KEY = os.getenv("AZURE_SEARCH_API_KEY")
 INDEX_NAME = os.getenv("AZURE_SEARCH_INDEX_NAME")
 
@@ -46,8 +45,8 @@ def save_mails_to_blob(user_email: str, mails: List[dict]) -> None:
         message_id = mail.get("id", "unknown")
         blob_path = f"{user_email}/{received}/{message_id}.json"
 
-        # if container.get_blob_client(blob_path).exists():
-        #     return  # 이미 저장된 메일은 skip
+        if container.get_blob_client(blob_path).exists():
+            return  # 이미 저장된 메일은 skip
 
         cleaned_mail = {
             "id": message_id,
@@ -62,39 +61,45 @@ def save_mails_to_blob(user_email: str, mails: List[dict]) -> None:
 
 
 
-# 임베딩하고 저장하는 함수 정의
-def save_mails_to_embed_and_store(user_email: str, mails: List[dict]) -> None:
-    
-    print("[*] Embedding 생성 시작...")
+# 메일을 AI Search에 인덱싱하고 저장하는 함수 정의
+def save_mails_and_index_to_search(user_email: str, mails: List[dict]) -> None:
 
+    print("[*] AI Search에 메일 인덱싱 시작...")
+    
     for mail in mails:
 
-        content = mail.get("subject", "") + "\n" + mail.get("body", {}).get("content", "")
-        embedding = get_embedding(content)
+        received = mail.get("receivedDateTime", "")[:10]  # yyyy-mm-dd
+        message_id = mail.get("id", "unknown")
 
-        doc = {
-            "id": mail.get("id", "unknown"),
-            "subject": mail.get("subject", ""),
-            "body": mail.get("body", {}).get("content", ""),
-            "embedding": embedding,
+        subject = mail.get("subject")
+        sender = mail.get("from", {}).get("emailAddress", {}).get("address", "")
+        blob_path = f"{user_email}/{received}/{message_id}.json"
+
+        content = mail.get("subject", "") + "\n" + mail.get("body", {}).get("content", "")
+
+        # AI Search에 인덱싱할 문서 포맷
+        document = {
+            "id": message_id,
+            "user_email": user_email,
+            "date": mail.get("receivedDateTime"),
+            "subject": subject,
+            "sender": sender,
+            "blob_path": blob_path,
+            "content": content
         }
 
-        upload_to_vector_index([doc])
-        
-
-def upload_to_vector_index(docs: list):
-
-    headers = {
+    
+        headers = {
         "Content-Type": "application/json",
         "api-key": SEARCH_KEY
-    }
-    payload = { "value": docs }
+        }
 
-    url = f"{SEARCH_ENDPOINT}/indexes/{INDEX_NAME}/docs/index?api-version=2023-11-01"
-    
-    res = requests.post(url, headers=headers, json=payload)
-    res.raise_for_status()
+        payload = { "value": [document] }
 
+        url = f"{SEARCH_ENDPOINT}/indexes/{INDEX_NAME}/docs/index?api-version=2023-11-01"
+        
+        res = requests.post(url, headers=headers, json=payload)
+        return res.raise_for_status()
 
 
 def set_mail_status(user_email: str, status: str):
@@ -110,11 +115,28 @@ def set_mail_status(user_email: str, status: str):
         overwrite=True
     )
 
+
+
 def get_mail_status(user_email: str) -> str:
+    
     blob_name = f"{user_email}.json"
+    
+    print(f"🔍 Checking mail status for user: {user_email}")
+
     try:
-        blob_data = status_container.get_blob_client(blob_name).download_blob().readall()
+
+        blob_client = status_container.get_blob_client(blob_name)
+        if not blob_client.exists():
+            print(f"⚠️ Blob {blob_name} does not exist.")
+            return "not_found"
+
+        print(f"📥 Downloading blob: {blob_name}")
+        blob_data = blob_client.download_blob().readall()
         data = json.loads(blob_data)
-        return data.get("status", "unknown")
-    except Exception:
-        return "not_started"
+        status = data.get("status", "unknown")
+        print(f"✅ Status: {status}")
+        return status
+
+    except Exception as e:
+        print(f"❌ Error reading {blob_name}: {e}")
+        return "error"
